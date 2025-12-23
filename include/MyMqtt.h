@@ -8,6 +8,7 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
 
 #include "MqttCredentials.h"
 
@@ -41,7 +42,7 @@ class MyMqtt {
 
     String _raceSettingTopic;
     String _raceStatusTopic;
-    String _raceRunningTopic;
+    String _raceDataTopic;
     String _raceWinnerTopic;
     String _raceWinnerTimeTopic;
     String _errorMessageTopic;
@@ -82,19 +83,18 @@ class MyMqtt {
    public:
     MyMqtt(String deviceName, String devicePlace, String topicBase)
         : _allTopics(topicBase + "#"),
-          _lwtTopic(topicBase + "WifiStatus"),
-          _deviceNameTopic(topicBase + "DeviceName"),
-          _devicePlaceTopic(topicBase + "DevicePlace"),
-          _wifiSsidTopic(topicBase + "WiFi_SSID"),
-          _wifiIpTopic(topicBase + "WiFi_IP"),
-          _wifiMacTopic(topicBase + "WiFi_MAC"),
-          _debugTopic(topicBase + "Debug"),
-          _raceSettingTopic(topicBase + "RaceSetting"),
-          _raceStatusTopic(topicBase + "RaceStatus"),
-          _raceRunningTopic(topicBase + "RaceRunning"),
-          _raceWinnerTopic(topicBase + "RaceWinner"),
-          _raceWinnerTimeTopic(topicBase + "RaceWinnerTime"),
-          _errorMessageTopic(topicBase + "Error_Message"),
+          _lwtTopic(topicBase + "wifiStatus"),
+          _deviceNameTopic(topicBase + "deviceName"),
+          _devicePlaceTopic(topicBase + "devicePlace"),
+          _wifiSsidTopic(topicBase + "wifiSsid"),
+          _wifiIpTopic(topicBase + "wifiIp"),
+          _wifiMacTopic(topicBase + "wifiMac"),
+          _debugTopic(topicBase + "debug"),
+          _raceStatusTopic(topicBase + "raceStatus"),
+          _raceDataTopic(topicBase + "raceData"),
+          _raceWinnerTopic(topicBase + "raceWinner"),
+          _raceWinnerTimeTopic(topicBase + "raceWinnerTime"),
+          _errorMessageTopic(topicBase + "errorMessage"),
           _deviceName(deviceName),
           _devicePlace(devicePlace) {}
 
@@ -137,6 +137,27 @@ class MyMqtt {
         _client.publish(_wifiSsidTopic.c_str(), ssid.c_str(), RETAIN);
         _client.publish(_wifiIpTopic.c_str(), ip.c_str(), RETAIN);
         _client.publish(_wifiMacTopic.c_str(), mac.c_str(), RETAIN);
+    }
+
+    void publishRaceStatus(String status, unsigned long time, int pos1, int pos2, int pos3) {
+        _client.publish(_raceStatusTopic.c_str(), status.c_str(), RETAIN);
+
+        JsonDocument doc;
+
+        doc["time"] = time;
+        doc["pos1"] = pos1;
+        doc["pos2"] = pos2;
+        doc["pos3"] = pos3;
+
+        String res;
+        serializeJson(doc, res);
+        
+        _client.publish(_raceDataTopic.c_str(), res.c_str());
+    }
+
+    void publishRaceWinner(String player, unsigned long time) {
+        _client.publish(_raceWinnerTopic.c_str(), player.c_str(), RETAIN);
+        _client.publish(_raceWinnerTimeTopic.c_str(), String(time).c_str(), RETAIN);
     }
 };
 

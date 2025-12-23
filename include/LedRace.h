@@ -4,6 +4,7 @@
 #define _LED_RACE_H_
 
 #include "MyMelody.h"
+#include "MyMqtt.h"
 
 #define PIN_NEOPIXEL 0
 #define PIN_BUZZER 15
@@ -29,6 +30,7 @@ class LedRace {
    private:
     Adafruit_NeoPixel _ledStrip =
         Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
+    MyMqtt* _mqtt;
 
     unsigned long lastMicActionPlayer1 = 0;
     unsigned long lastMicActionPlayer2 = 0;
@@ -50,6 +52,25 @@ class LedRace {
     unsigned long startTime = 0;
 
     static LedRace* instance;
+
+
+    void publishRaceStatus(String status, unsigned long time, int pos1, int pos2, int pos3) {
+        if (status == "Stopped") {
+            _mqtt->publishRaceStatus("Stopped", time, pos1, pos2, pos3);
+        } else if (status == "Countdown") {
+            _mqtt->publishRaceStatus("Countdown", time, pos1, pos2, pos3);
+        } else if (status == "Running") {
+            _mqtt->publishRaceStatus("Running", time, pos1, pos2, pos3);
+        } else if (status == "Finished") {
+            _mqtt->publishRaceStatus("Finished", time, pos1, pos2, pos3);
+        }
+        // Serial.printf("Race Status: %s, Time: %lu, Positions: %d, %d, %d\n", status.c_str(), time, pos1, pos2, pos3);
+    }
+
+    void publishWinner(String player, unsigned long time) {
+        _mqtt->publishRaceWinner(player, time);
+        // Serial.printf("Race Winner: %s, Time: %lu\n", player.c_str(), time);
+    }
 
     void clearStrip() {
         for (int i = 0; i < NUMPIXELS; i++) {
@@ -129,12 +150,11 @@ class LedRace {
         if (instance) instance->micActionPlayer3();
     }
 
-    // TODO
     void buttonPressed() {
         Serial.println("Button pressed");
         if (gameRunning) {
             gameRunning = false;
-            publishRaceStatus("Stopped");
+            publishRaceStatus("Stopped", gameTime, positionPlayer1 - 10, positionPlayer2 - 10, positionPlayer3 - 10);
 
             detachInterrupt(PIN_MIC_1);
             detachInterrupt(PIN_MIC_2);
@@ -144,7 +164,7 @@ class LedRace {
 
             stopGate();
         } else {
-            publishRaceStatus("Prepare4Race");
+            publishRaceStatus("Countdown", 0, 0, 0, 0);
 
             // TODO: Display race start
 
@@ -160,7 +180,7 @@ class LedRace {
             gameRunning = true;
             startTime = millis();
 
-            publishRaceStatus("Running");
+            publishRaceStatus("Running", 0, 0, 0, 0);
 
             attachInterrupt(digitalPinToInterrupt(PIN_MIC_1), micActionPlayer1Wrapper, RISING);
             attachInterrupt(digitalPinToInterrupt(PIN_MIC_2), micActionPlayer2Wrapper, RISING);
@@ -168,20 +188,9 @@ class LedRace {
         }
     }
 
-    void publishRaceStatus(String status) {
-        // TODO: implement MQTT publish
-    }
-
-    void sendRaceData() {
-        // TODO: implement MQTT publish
-    }
-
-    void publishWinner(String player, unsigned long time) {
-        // TODO: implement MQTT publish
-    }
-
    public:
-    LedRace() {}
+    LedRace(MyMqtt* mqtt): _mqtt(mqtt) {}
+    // LedRace() {}
 
     void begin() {
         instance = this;
@@ -198,7 +207,8 @@ class LedRace {
 
         // TODO: initialize LCD
         // TODO: display WiFi info on LCD
-        // TODO: publish MQTT WiFi info
+
+        publishRaceStatus("Stopped", 0, 0, 0, 0);
     }
 
     void loop() {
@@ -223,7 +233,8 @@ class LedRace {
             gameTime = millis() - startTime;
 
             // TODO: display player steps on LCD
-            // TODO: publish MQTT
+
+            publishRaceStatus("Running", gameTime, positionPlayer1 - 10, positionPlayer2 - 10, positionPlayer3 - 10);
 
             // detachInterrupt(PIN_MIC_1);
             // detachInterrupt(PIN_MIC_2);
@@ -245,48 +256,45 @@ class LedRace {
             // micActionPlayer2Wrapper, RISING);
             // attachInterrupt(digitalPinToInterrupt(PIN_MIC_3),
             // micActionPlayer3Wrapper, RISING);
-        }
-
-        if (positionPlayer1 >= NUMPIXELS - START_POS) {
-            detachInterrupt(PIN_MIC_1);
-            gameTime = millis() - startTime;
-            gameRunning = false;
-
-            sendRaceData();
-            publishRaceStatus("Finish");
-            publishWinner("Player_1", gameTime);
-
-            // TODO: Display winner & winner's time on LCD
-
-            stopGate();
-        }
-
-        if (positionPlayer2 >= NUMPIXELS - START_POS) {
-            detachInterrupt(PIN_MIC_2);
-            gameTime = millis() - startTime;
-            gameRunning = false;
-
-            sendRaceData();
-            publishRaceStatus("Finish");
-            publishWinner("Player_2", gameTime);
-
-            // TODO: Display winner & winner's time on LCD
-
-            stopGate();
-        }
-
-        if (positionPlayer3 >= NUMPIXELS - START_POS) {
-            detachInterrupt(PIN_MIC_3);
-            gameTime = millis() - startTime;
-            gameRunning = false;
-
-            sendRaceData();
-            publishRaceStatus("Finish");
-            publishWinner("Player_3", gameTime);
-
-            // TODO: Display winner & winner's time on LCD
-
-            stopGate();
+            
+            if (positionPlayer1 >= NUMPIXELS - START_POS) {
+                detachInterrupt(PIN_MIC_1);
+                gameTime = millis() - startTime;
+                gameRunning = false;
+                
+                publishRaceStatus("Finished", gameTime, positionPlayer1 - 10, positionPlayer2 - 10, positionPlayer3 - 10);
+                publishWinner("Player_1", gameTime);
+            
+                // TODO: Display winner & winner's time on LCD
+                
+                stopGate();
+            }
+        
+            if (positionPlayer2 >= NUMPIXELS - START_POS) {
+                detachInterrupt(PIN_MIC_2);
+                gameTime = millis() - startTime;
+                gameRunning = false;
+                
+                publishRaceStatus("Finished", gameTime, positionPlayer1 - 10, positionPlayer2 - 10, positionPlayer3 - 10);
+                publishWinner("Player_2", gameTime);
+                
+                // TODO: Display winner & winner's time on LCD
+                
+                stopGate();
+            }
+            
+            if (positionPlayer3 >= NUMPIXELS - START_POS) {
+                detachInterrupt(PIN_MIC_3);
+                gameTime = millis() - startTime;
+                gameRunning = false;
+                
+                publishRaceStatus("Finished", gameTime, positionPlayer1 - 10, positionPlayer2 - 10, positionPlayer3 - 10);
+                publishWinner("Player_3", gameTime);
+                
+                // TODO: Display winner & winner's time on LCD
+                
+                stopGate();
+            }
         }
     }
 };
