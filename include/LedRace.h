@@ -5,6 +5,7 @@
 
 #include "MyMelody.h"
 #include "MyMqtt.h"
+#include "MyDisplay.h"
 
 #define PIN_NEOPIXEL 0
 #define PIN_BUZZER 15
@@ -30,7 +31,8 @@ class LedRace {
 private:
   Adafruit_NeoPixel _ledStrip =
       Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
-  MyMqtt *_mqtt;
+  MyMqtt *mqtt;
+  MyDisplay *display;
 
   unsigned long lastMicActionPlayer1 = 0;
   unsigned long lastMicActionPlayer2 = 0;
@@ -58,20 +60,20 @@ private:
   void publishRaceStatus(String status, unsigned long time, int pos1, int pos2,
                          int pos3) {
     if (status == "Stopped") {
-      _mqtt->publishRaceStatus("Stopped", time, pos1, pos2, pos3);
+      mqtt->publishRaceStatus("Stopped", time, pos1, pos2, pos3);
     } else if (status == "Countdown") {
-      _mqtt->publishRaceStatus("Countdown", time, pos1, pos2, pos3);
+      mqtt->publishRaceStatus("Countdown", time, pos1, pos2, pos3);
     } else if (status == "Running") {
-      _mqtt->publishRaceStatus("Running", time, pos1, pos2, pos3);
+      mqtt->publishRaceStatus("Running", time, pos1, pos2, pos3);
     } else if (status == "Finished") {
-      _mqtt->publishRaceStatus("Finished", time, pos1, pos2, pos3);
+      mqtt->publishRaceStatus("Finished", time, pos1, pos2, pos3);
     }
     // Serial.printf("Race Status: %s, Time: %lu, Positions: %d, %d, %d\n",
     // status.c_str(), time, pos1, pos2, pos3);
   }
 
   void publishWinner(String player, unsigned long time) {
-    _mqtt->publishRaceWinner(player, time);
+    mqtt->publishRaceWinner(player, time);
     // Serial.printf("Race Winner: %s, Time: %lu\n", player.c_str(), time);
   }
 
@@ -167,13 +169,15 @@ private:
       detachInterrupt(PIN_MIC_2);
       detachInterrupt(PIN_MIC_3);
 
-      // TODO: Display race stop
+      display->showStatus("Race Stopped");
 
       stopGate();
+      delay(2000);
+      display->showStatus("Press the button", "to start the race!", "");
     } else {
       publishRaceStatus("Countdown", 0, 0, 0, 0);
 
-      // TODO: Display race start
+      display->showStatus("Get ready!");
 
       clearStrip();
       _ledStrip.show();
@@ -199,8 +203,8 @@ private:
   }
 
 public:
-  LedRace(MyMqtt *mqtt) : _mqtt(mqtt) {}
-  // LedRace() {}
+  LedRace(MyMqtt *_mqtt, MyDisplay *_display)
+      : mqtt(_mqtt), display(_display) {}
 
   void begin() {
     instance = this;
@@ -215,10 +219,8 @@ public:
     _ledStrip.setBrightness(BRIGHTNESS);
     _ledStrip.show();
 
-    // TODO: initialize LCD
-    // TODO: display WiFi info on LCD
-
     publishRaceStatus("Stopped", 0, 0, 0, 0);
+    display->showStatus("Press the button", "to start the race!", "");
   }
 
   void loop() {
@@ -242,7 +244,9 @@ public:
     if (gameRunning) {
       gameTime = millis() - startTime;
 
-      // TODO: display player steps on LCD
+      // TODO: Optimize by only updating display every 100ms or when positions change
+      display->showStatus((String("Player 1: ") + String(positionPlayer1 - 10)).c_str(), (String("Player 2: ") + String(positionPlayer2 - 10)).c_str(),
+              (String("Player 3: ") + String(positionPlayer3 - 10)).c_str());
 
       publishRaceStatus("Running", gameTime, positionPlayer1 - 10,
                         positionPlayer2 - 10, positionPlayer3 - 10);
@@ -285,7 +289,7 @@ public:
                           positionPlayer2 - 10, positionPlayer3 - 10);
         publishWinner("Player_1", gameTime);
 
-        // TODO: Display winner & winner's time on LCD
+      display->showStatus("Player 1 wins!", stringTime(gameTime).c_str(), "Congratulations!");
 
         stopGate();
       }
@@ -299,7 +303,7 @@ public:
                           positionPlayer2 - 10, positionPlayer3 - 10);
         publishWinner("Player_2", gameTime);
 
-        // TODO: Display winner & winner's time on LCD
+        display->showStatus("Player 2 wins!", stringTime(gameTime).c_str(), "Congratulations!");
 
         stopGate();
       }
@@ -313,7 +317,7 @@ public:
                           positionPlayer2 - 10, positionPlayer3 - 10);
         publishWinner("Player_3", gameTime);
 
-        // TODO: Display winner & winner's time on LCD
+        display->showStatus("Player 3 wins!", stringTime(gameTime).c_str(), "Congratulations!");
 
         stopGate();
       }
