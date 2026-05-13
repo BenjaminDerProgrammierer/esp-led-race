@@ -38,9 +38,11 @@ private:
   unsigned long lastMicActionPlayer2 = 0;
   unsigned long lastMicActionPlayer3 = 0;
   unsigned long lastButtonAction = 0;
+  unsigned long lastMqttUpdate = 0;
 
   const unsigned long micDebounceDelay = 60;      // 60ms debounce
   const unsigned long buttonDebounceDelay = 1000; // 1s button held
+  const unsigned long mqttUpdateInterval = 1000;  // Update MQTT every second
 
   int positionPlayer1 = START_POS;
   int positionPlayer2 = START_POS;
@@ -96,6 +98,7 @@ private:
 
     for (int i = 0; i < 5; i++) {
       _ledStrip.setPixelColor(i, COLOR_RED);
+      _ledStrip.setPixelColor(START_POS - 1 - i, COLOR_RED);
       _ledStrip.show();
       melody.playNote(i);
     }
@@ -106,18 +109,16 @@ private:
 
   void stopGate() {
     MyMelody melody = MyMelody(PIN_BUZZER);
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < START_POS; i++) {
       _ledStrip.setPixelColor(i, COLOR_RED);
-      _ledStrip.setPixelColor(i + 5, COLOR_OFF);
     }
     _ledStrip.show();
     melody.playNote(7);
   }
 
   void startGate() {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < START_POS; i++) {
       _ledStrip.setPixelColor(i, COLOR_GREEN);
-      _ledStrip.setPixelColor(i + 5, COLOR_OFF);
     }
     _ledStrip.show();
   }
@@ -162,8 +163,9 @@ private:
     // Serial.println("Button pressed");
     if (gameRunning) {
       gameRunning = false;
-      publishRaceStatus("Stopped", gameTime, positionPlayer1 - 10,
-                        positionPlayer2 - 10, positionPlayer3 - 10);
+      publishRaceStatus("Stopped", gameTime, positionPlayer1 - START_POS,
+                        positionPlayer2 - START_POS,
+                        positionPlayer3 - START_POS);
 
       detachInterrupt(PIN_MIC_1);
       detachInterrupt(PIN_MIC_2);
@@ -192,6 +194,7 @@ private:
       startTime = millis();
 
       publishRaceStatus("Running", 0, 0, 0, 0);
+      display->showStatus("Player 1: 0", "Player 2: 0", "Player 3: 0");
 
       attachInterrupt(digitalPinToInterrupt(PIN_MIC_1), micActionPlayer1Wrapper,
                       RISING);
@@ -206,6 +209,8 @@ public:
   LedRace(MyMqtt *_mqtt, MyDisplay *_display)
       : mqtt(_mqtt), display(_display) {}
 
+  bool getGameRunning() { return gameRunning; }
+
   void begin() {
     instance = this;
 
@@ -217,6 +222,7 @@ public:
 
     _ledStrip.begin();
     _ledStrip.setBrightness(BRIGHTNESS);
+    clearStrip();
     _ledStrip.show();
 
     publishRaceStatus("Stopped", 0, 0, 0, 0);
@@ -244,8 +250,12 @@ public:
     if (gameRunning) {
       gameTime = millis() - startTime;
 
-      publishRaceStatus("Running", gameTime, positionPlayer1 - 10,
-                        positionPlayer2 - 10, positionPlayer3 - 10);
+      if (millis() - lastMqttUpdate > mqttUpdateInterval) {
+        lastMqttUpdate = millis();
+        publishRaceStatus("Running", gameTime, positionPlayer1 - START_POS,
+                          positionPlayer2 - START_POS,
+                          positionPlayer3 - START_POS);
+      }
 
       // detachInterrupt(PIN_MIC_1);
       // detachInterrupt(PIN_MIC_2);
@@ -256,10 +266,9 @@ public:
       int currentPositions =
           positionPlayer1 + positionPlayer2 + positionPlayer3;
       if (currentPositions != lastPositions) {
-        display->showStatus(
-            (String("Player 1: ") + String(positionPlayer1 - 10)).c_str(),
-            (String("Player 2: ") + String(positionPlayer2 - 10)).c_str(),
-            (String("Player 3: ") + String(positionPlayer3 - 10)).c_str());
+        display->showRaceStatus(positionPlayer1 - START_POS,
+                                positionPlayer2 - START_POS,
+                                positionPlayer3 - START_POS);
         clearStrip();
         startGate();
 
@@ -285,8 +294,9 @@ public:
         gameTime = millis() - startTime;
         gameRunning = false;
 
-        publishRaceStatus("Finished", gameTime, positionPlayer1 - 10,
-                          positionPlayer2 - 10, positionPlayer3 - 10);
+        publishRaceStatus("Finished", gameTime, positionPlayer1 - START_POS,
+                          positionPlayer2 - START_POS,
+                          positionPlayer3 - START_POS);
         publishWinner("Player_1", gameTime);
 
         display->showStatus("Player 1 wins!", stringTime(gameTime).c_str(),
@@ -300,8 +310,9 @@ public:
         gameTime = millis() - startTime;
         gameRunning = false;
 
-        publishRaceStatus("Finished", gameTime, positionPlayer1 - 10,
-                          positionPlayer2 - 10, positionPlayer3 - 10);
+        publishRaceStatus("Finished", gameTime, positionPlayer1 - START_POS,
+                          positionPlayer2 - START_POS,
+                          positionPlayer3 - START_POS);
         publishWinner("Player_2", gameTime);
 
         display->showStatus("Player 2 wins!", stringTime(gameTime).c_str(),
@@ -315,8 +326,9 @@ public:
         gameTime = millis() - startTime;
         gameRunning = false;
 
-        publishRaceStatus("Finished", gameTime, positionPlayer1 - 10,
-                          positionPlayer2 - 10, positionPlayer3 - 10);
+        publishRaceStatus("Finished", gameTime, positionPlayer1 - START_POS,
+                          positionPlayer2 - START_POS,
+                          positionPlayer3 - START_POS);
         publishWinner("Player_3", gameTime);
 
         display->showStatus("Player 3 wins!", stringTime(gameTime).c_str(),

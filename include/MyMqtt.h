@@ -118,13 +118,17 @@ public:
    * Maintain MQTT connection and process incoming messages.
    */
   void loop() {
-    // Ensure the client is connected
+    _client.loop();
+  }
+
+  /**
+   * @brief Ensure that the MQTT client is connected to the broker. If not, attempt to reconnect.
+   * 
+   */
+  void ensureConnected() {
     if (!_client.connected()) {
       connect();
     }
-
-    // Maintain MQTT connection
-    _client.loop();
   }
 
   /**
@@ -175,6 +179,10 @@ public:
   void publishRaceWinner(String player, unsigned long time) {
     _client.publish(_raceWinnerTopic.c_str(), player.c_str(), RETAIN);
     _client.publish(_raceWinnerTimeTopic.c_str(), String(time).c_str(), RETAIN);
+  }
+
+  bool isConnected() {
+    return _client.connected();
   }
 };
 

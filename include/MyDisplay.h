@@ -36,24 +36,16 @@ public:
   }
 
   /**
-   * @brief Prints a message to the LCD display.
-   *
-   * @param message The message to be printed on the LCD.
-   */
-  void print(const char *message) { lcd.print(message); }
-
-  /**
    * @brief Displays a status message on the LCD.
-   * 
+   *
    * @param status The status message to be displayed on the LCD.
    */
-  void showStatus(const char *status) {
-    showStatus(status, "", "");
-  }
+  void showStatus(const char *status) { showStatus(status, "", ""); }
 
   /**
-   * @brief Displays a status message on the LCD with two additional lines of text.
-   * 
+   * @brief Displays a status message on the LCD with two additional lines of
+   * text.
+   *
    * @param status The status message to be displayed on the LCD.
    * @param line2 A second line of text to be displayed on the LCD.
    * @param line3 A third line of text to be displayed on the LCD.
@@ -68,6 +60,15 @@ public:
     lcd.print(line3);
     lcd.setCursor(0, 3);
     lcd.printf("%s %s", model.c_str(), version.c_str());
+  }
+
+  void showRaceStatus(int pos1, int pos2, int pos3) {
+    lcd.setCursor(10, 0);
+    lcd.print(pos1);
+    lcd.setCursor(10, 1);
+    lcd.print(pos2);
+    lcd.setCursor(10, 2);
+    lcd.print(pos3);
   }
 };
 #endif // _MY_DISPLAY_H_

@@ -2,12 +2,6 @@
 
 ![Schema](./assets/led-race-schema.jpg)
 
-## TODO
-
-* htl logo
-* seitentitel
-* hintergrundd
-
 ## ESP8266 Pinout
 
 <https://randomnerdtutorials.com/esp8266-pinout-reference-gpios/>
