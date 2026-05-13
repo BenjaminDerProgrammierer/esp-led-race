@@ -3,9 +3,9 @@
 #ifndef _LED_RACE_H_
 #define _LED_RACE_H_
 
+#include "MyDisplay.h"
 #include "MyMelody.h"
 #include "MyMqtt.h"
-#include "MyDisplay.h"
 
 #define PIN_NEOPIXEL 0
 #define PIN_BUZZER 15
@@ -159,7 +159,7 @@ private:
   }
 
   void buttonPressed() {
-    Serial.println("Button pressed");
+    // Serial.println("Button pressed");
     if (gameRunning) {
       gameRunning = false;
       publishRaceStatus("Stopped", gameTime, positionPlayer1 - 10,
@@ -244,10 +244,6 @@ public:
     if (gameRunning) {
       gameTime = millis() - startTime;
 
-      // TODO: Optimize by only updating display every 100ms or when positions change
-      display->showStatus((String("Player 1: ") + String(positionPlayer1 - 10)).c_str(), (String("Player 2: ") + String(positionPlayer2 - 10)).c_str(),
-              (String("Player 3: ") + String(positionPlayer3 - 10)).c_str());
-
       publishRaceStatus("Running", gameTime, positionPlayer1 - 10,
                         positionPlayer2 - 10, positionPlayer3 - 10);
 
@@ -260,6 +256,10 @@ public:
       int currentPositions =
           positionPlayer1 + positionPlayer2 + positionPlayer3;
       if (currentPositions != lastPositions) {
+        display->showStatus(
+            (String("Player 1: ") + String(positionPlayer1 - 10)).c_str(),
+            (String("Player 2: ") + String(positionPlayer2 - 10)).c_str(),
+            (String("Player 3: ") + String(positionPlayer3 - 10)).c_str());
         clearStrip();
         startGate();
 
@@ -289,7 +289,8 @@ public:
                           positionPlayer2 - 10, positionPlayer3 - 10);
         publishWinner("Player_1", gameTime);
 
-      display->showStatus("Player 1 wins!", stringTime(gameTime).c_str(), "Congratulations!");
+        display->showStatus("Player 1 wins!", stringTime(gameTime).c_str(),
+                            "Congratulations!");
 
         stopGate();
       }
@@ -303,7 +304,8 @@ public:
                           positionPlayer2 - 10, positionPlayer3 - 10);
         publishWinner("Player_2", gameTime);
 
-        display->showStatus("Player 2 wins!", stringTime(gameTime).c_str(), "Congratulations!");
+        display->showStatus("Player 2 wins!", stringTime(gameTime).c_str(),
+                            "Congratulations!");
 
         stopGate();
       }
@@ -317,7 +319,8 @@ public:
                           positionPlayer2 - 10, positionPlayer3 - 10);
         publishWinner("Player_3", gameTime);
 
-        display->showStatus("Player 3 wins!", stringTime(gameTime).c_str(), "Congratulations!");
+        display->showStatus("Player 3 wins!", stringTime(gameTime).c_str(),
+                            "Congratulations!");
 
         stopGate();
       }
